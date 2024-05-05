@@ -1,6 +1,5 @@
 const AIR_HYSTERESIS_DELTA = 0.1
 const FLOOR_HYSTERESIS_DELTA = 0.4
-const SENSOR_AVERAGE_LIMIT = 5
 
 const hysteresis = (prev: boolean, current: number | null, target: number | null, delta: number | null): boolean => {
   if (current === null || target === null || delta === null) {
@@ -15,43 +14,8 @@ enum IControllerMode {
   ON,
 }
 
-class Sensor {
-  private _values: Array<number> = []
-  private _onChange?: (value: number | null) => void
-
-  constructor(sensorDataId: string, cb?: (value: number | null) => void) {
-    on({ id: sensorDataId, change: 'any' }, async (obj) => {
-      const current = obj.state.val
-      if (current !== 'null') {
-        this._values.push(parseFloat(current))
-        if (this._values.length > SENSOR_AVERAGE_LIMIT) {
-          this._values.shift()
-        }
-      } else {
-        this._values.shift()
-      }
-      this._onChange?.(this.get())
-    })
-
-    this._onChange = cb
-  }
-
-  onChange(cb: (value: number | null) => void) {
-    this._onChange = cb
-  }
-
-  get(): number | null {
-    if (!this._values.length) {
-      return null
-    }
-    return this._values.reduce((average, value) => average + value, 0) / this._values.length
-  }
-}
-
-const dsSensorBathroom = new Sensor('mqtt.0.sensors.ds1_3')
-
 abstract class Controller {
-  private _valueId: string
+  private _sensorId: string
   private _controlId: string
   private _controlSetId: string
   private _mode: IControllerMode = IControllerMode.AUTO
@@ -63,19 +27,12 @@ abstract class Controller {
   protected _delta: number | null = null
   private _onChange?: (newValue: boolean) => void
 
-  private _sensor: Sensor
-
-  constructor({ valueId, controlId, controlSetId }) {
+  constructor({ sensorId, controlId, controlSetId }) {
     this._controlId = controlId
     this._controlSetId = controlSetId
-    this._valueId = valueId
+    this._sensorId = sensorId
 
-    this._sensor = new Sensor('mqtt.0.sensors.ds1_3', (value => {
-      this._value = value
-      this.execute()
-    }))
-
-    on({ id: this._valueId, change: 'any' }, async (obj) => {
+    on({ id: this._sensorId, change: 'any' }, async (obj) => {
       this._value = obj.state.val === -128 ? null : obj.state.val
       this.execute()
     })
@@ -174,43 +131,43 @@ class Room {
 //-------------------------------------
 
 const bedroomFloor = new FloorController({
-  valueId: 'mqtt.0.climate.tp_bed',
+  sensorId: 'javascript.0.sensors.bedroom.floor.ds.temperature',
   controlId: 'mqtt.0.climate.tp_valve_bed',
   controlSetId: 'mqtt.0.climate.tp_valve_bed.set',
 })
 
 const bedroomAir = new AirController({
-  valueId: 'mqtt.0.climate.tv_bed',
+  sensorId: 'javascript.0.sensors.bedroom.air.ds.temperature',
   controlId: 'mqtt.0.climate.bat_valve_bed',
   controlSetId: 'mqtt.0.climate.bat_valve_bed.set',
 })
 
 const childrenFloor = new FloorController({
-  valueId: 'mqtt.0.climate.tp_det',
+  sensorId: 'javascript.0.sensors.kids-room.floor.ds.temperature',
   controlId: 'mqtt.0.climate.tp_valve_det',
   controlSetId: 'mqtt.0.climate.tp_valve_det.set',
 })
 
 const childrenAir = new AirController({
-  valueId: 'mqtt.0.climate.tv_det',
+  sensorId: 'javascript.0.sensors.kids-room.air.ds.temperature',
   controlId: 'mqtt.0.climate.bat_valve_det',
   controlSetId: 'mqtt.0.climate.bat_valve_det.set',
 })
 
 const livingRoomFloor = new FloorController({
-  valueId: 'mqtt.0.climate.tp_din',
+  sensorId: 'javascript.0.sensors.living-room.floor.ds.temperature',
   controlId: 'mqtt.0.climate.tp_valve_din',
   controlSetId: 'mqtt.0.climate.tp_valve_din.set',
 })
 
 const kitchenFloor = new FloorController({
-  valueId: 'mqtt.0.climate.tp_kit',
+  sensorId: 'javascript.0.sensors.kitchen.floor.ds.temperature',
   controlId: 'mqtt.0.climate.tp_valve_kit',
   controlSetId: 'mqtt.0.climate.tp_valve_kit.set',
 })
 
 const livingRoomAir = new AirController({
-  valueId: 'mqtt.0.climate.tv_din',
+  sensorId: 'javascript.0.sensors.living-room.air.ds.temperature',
   controlId: 'mqtt.0.climate.bat_valve_din',
   controlSetId: 'mqtt.0.climate.bat_valve_din.set'
 })

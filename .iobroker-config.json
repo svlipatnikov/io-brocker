@@ -9,5 +9,6 @@
   },
   "autoUpload": false,
   "autoReconnect": true,
-  "scriptAutoRun": false
+  "scriptAutoRun": false,
+  "username": "lipatnikov"
 }
